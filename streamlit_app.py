@@ -1,6 +1,6 @@
 import streamlit as st
 import together
-import google.generativeai as genai
+import google as genai
 import os
 from groq import Groq
 
