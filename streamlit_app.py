@@ -45,29 +45,7 @@ with st.sidebar:
         key="provider"
     )
     
-    # Initialize API keys in session state
-    if 'together_api' not in st.session_state:
-        st.session_state.together_api = ""
-    if 'gemini_api' not in st.session_state:
-        st.session_state.gemini_api = ""
-    if 'groq_api' not in st.session_state:
-        st.session_state.groq_api = ""
-    
-    # API Key input based on selected provider
     if provider == "Together AI":
-        st.markdown("""
-        ### Together AI API Key Required
-        Get your API key from [Together AI](https://www.together.ai)
-        """)
-        together_api = st.text_input(
-            'Enter Together AI API key:', 
-            value=st.session_state.together_api,
-            type='password',
-            help="Required for Together AI models"
-        )
-        if together_api != st.session_state.together_api:
-            st.session_state.together_api = together_api
-            
         # Together AI model selection
         model_options = {
             'Llama 3.3 70B': 'meta-llama/Llama-3.3-70B-Instruct-Turbo-Free',
@@ -77,19 +55,6 @@ with st.sidebar:
         llm = model_options[selected_model]
         
     elif provider == "Groq":
-        st.markdown("""
-        ### Groq API Key Required
-        Get your API key from [Groq Console](https://console.groq.com)
-        """)
-        groq_api = st.text_input(
-            'Enter Groq API key:', 
-            value=st.session_state.groq_api,
-            type='password',
-            help="Required for Groq models"
-        )
-        if groq_api != st.session_state.groq_api:
-            st.session_state.groq_api = groq_api
-            
         # Groq model selection
         selected_model = "llama3-70b-8192"
         llm = selected_model
@@ -101,19 +66,6 @@ with st.sidebar:
                              help="The maximum number of tokens to generate.")
         
     else:  # Google Gemini
-        st.markdown("""
-        ### Google Gemini API Key Required
-        Get your API key from [Google AI Studio](https://ai.google.dev/)
-        """)
-        gemini_api = st.text_input(
-            'Enter Gemini API key:', 
-            value=st.session_state.gemini_api,
-            type='password',
-            help="Required for Gemini models"
-        )
-        if gemini_api != st.session_state.gemini_api:
-            st.session_state.gemini_api = gemini_api
-            
         # Gemini model selection
         selected_model = "gemini-2.0-flash"
         llm = selected_model
@@ -131,28 +83,29 @@ with st.sidebar:
 
 # Initialize session state for messages if it doesn't exist
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! I'm your AI assistant. Please provide your API key in the sidebar to start chatting. 👋"}]
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! I'm your AI assistant. How can I help you today? 👋"}]
 
 # Function for generating responses
 def generate_response(prompt_input):
     provider = st.session_state.provider
     
     if provider == "Together AI":
-        if not st.session_state.together_api:
-            st.error("Please provide your Together AI API key in the sidebar.")
-            return None
-            
-        messages = [{"role": "system", "content": """You are a helpful AI assistant. Be direct and factual in your responses. Use bullet points for lists."""}]
-        
-        # Add chat history
-        for dict_message in st.session_state.messages:
-            messages.append({"role": dict_message["role"], "content": dict_message["content"]})
-        
-        # Add user's new message
-        messages.append({"role": "user", "content": prompt_input})
-        
         try:
-            client = together.Together(api_key=st.session_state.together_api)
+            together_api_key = st.secrets["together_api"]
+            if not together_api_key:
+                st.error("Together AI API key not found in secrets.toml")
+                return None
+                
+            messages = [{"role": "system", "content": """You are a helpful AI assistant. Be direct and factual in your responses. Use bullet points for lists."""}]
+            
+            # Add chat history
+            for dict_message in st.session_state.messages:
+                messages.append({"role": dict_message["role"], "content": dict_message["content"]})
+            
+            # Add user's new message
+            messages.append({"role": "user", "content": prompt_input})
+            
+            client = together.Together(api_key=together_api_key)
             stream = client.chat.completions.create(
                 model=llm,
                 messages=messages,
@@ -168,21 +121,22 @@ def generate_response(prompt_input):
             return None
             
     elif provider == "Groq":
-        if not st.session_state.groq_api:
-            st.error("Please provide your Groq API key in the sidebar.")
-            return None
-            
-        messages = [{"role": "system", "content": """You are a helpful AI assistant. Be direct and factual in your responses. Use bullet points for lists."""}]
-        
-        # Add chat history
-        for dict_message in st.session_state.messages:
-            messages.append({"role": dict_message["role"], "content": dict_message["content"]})
-        
-        # Add user's new message
-        messages.append({"role": "user", "content": prompt_input})
-        
         try:
-            client = Groq(api_key=st.session_state.groq_api)
+            groq_api_key = st.secrets["groq_api"]
+            if not groq_api_key:
+                st.error("Groq API key not found in secrets.toml")
+                return None
+                
+            messages = [{"role": "system", "content": """You are a helpful AI assistant. Be direct and factual in your responses. Use bullet points for lists."""}]
+            
+            # Add chat history
+            for dict_message in st.session_state.messages:
+                messages.append({"role": dict_message["role"], "content": dict_message["content"]})
+            
+            # Add user's new message
+            messages.append({"role": "user", "content": prompt_input})
+            
+            client = Groq(api_key=groq_api_key)
             stream = client.chat.completions.create(
                 model=llm,
                 messages=messages,
@@ -198,12 +152,13 @@ def generate_response(prompt_input):
             return None
             
     else:  # Google Gemini
-        if not st.session_state.gemini_api:
-            st.error("Please provide your Google Gemini API key in the sidebar.")
-            return None
-            
         try:
-            client = genai.Client(api_key=st.session_state.gemini_api)
+            gemini_api_key = st.secrets["gemini_api"]
+            if not gemini_api_key:
+                st.error("Gemini API key not found in secrets.toml")
+                return None
+                
+            client = genai.Client(api_key=gemini_api_key)
             
             # Format messages for Gemini - combine all messages into a single prompt
             system_prompt = """You are a helpful AI assistant. Be direct and factual in your responses. Use bullet points for lists.\n\n"""
@@ -231,15 +186,9 @@ def generate_response(prompt_input):
             return None
 
 def clear_chat_history():
-    # Reset UI messages and chat history for both providers
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! I'm your AI assistant. Please provide your API key in the sidebar to start chatting. 👋"}]
-    
-    # Reset provider-specific session states
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! I'm your AI assistant. How can I help you today? 👋"}]
     if "gemini_chat" in st.session_state:
         del st.session_state.gemini_chat
-    
-    # For Together AI, the messages array is already reset above
-    # This ensures the next API call will start fresh
     
 st.sidebar.button('Clear Chat History', on_click=clear_chat_history, type="primary")
 
