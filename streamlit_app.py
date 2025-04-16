@@ -1,6 +1,7 @@
 import streamlit as st
 import together
-import google as genai
+from google import genai
+from google.genai import types
 import os
 from groq import Groq
 
@@ -202,27 +203,26 @@ def generate_response(prompt_input):
             return None
             
         try:
-            genai.configure(api_key=st.session_state.gemini_api)
-            model = genai.GenerativeModel(selected_model)
+            client = genai.Client(api_key=st.session_state.gemini_api)
             
-            # Format chat history for Gemini with system prompt
-            chat = model.start_chat(history=[])
-            
-            # Add system prompt for Gemini
-            system_prompt = """You are a helpful AI assistant. Be direct and factual in your responses. Use bullet points for lists."""
-            chat.send_message(system_prompt)
+            # Format messages for Gemini - combine all messages into a single prompt
+            system_prompt = """You are a helpful AI assistant. Be direct and factual in your responses. Use bullet points for lists.\n\n"""
+            conversation = system_prompt
             
             # Add chat history excluding the initial greeting
             for message in st.session_state.messages:
                 if message["role"] != "assistant" or message != st.session_state.messages[0]:
-                    chat.send_message(message["content"])
+                    conversation += f"{message['role'].title()}: {message['content']}\n"
             
-            response = chat.send_message(
-                prompt_input,
-                generation_config=genai.types.GenerationConfig(
+            # Add user's new message
+            conversation += f"Assistant: "
+            
+            response = client.models.generate_content_stream(
+                model=selected_model,
+                contents=conversation,
+                config=types.GenerateContentConfig(
                     temperature=temperature
-                ),
-                stream=True
+                )
             )
             return response
             
